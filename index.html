@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Golden Tofu Animation - Cute & Bouncy</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        body {
+            background-color: #fef08a; /* Latar belakang kuning lembut */
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="flex flex-col justify-center items-center min-h-screen m-0">
+
+    <div class="text-center space-y-2 mb-4">
+        <h1 class="text-3xl font-extrabold text-amber-700 tracking-wide drop-shadow-sm">Si Golden Tofu! ✨</h1>
+        <p class="text-sm font-medium text-amber-600/80">Animasi murni menggunakan JavaScript Canvas</p>
+    </div>
+
+    <div class="bg-white rounded-3xl shadow-2xl p-4 border-4 border-amber-400/30">
+        <canvas id="tofuCanvas" width="400" height="400"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('tofuCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Parameter Fisika Animasi
+        let posisiY = 200;       // Posisi awal Y
+        let kecepatanY = 0;     // Kecepatan gerak vertikal
+        const gravitasi = 0.4;  // Gaya tarik ke bawah
+        const kekuatanLompat = -11; // Dorongan lompatan ke atas
+        
+        // Parameter Skala untuk Efek Jeli (Squash & Stretch)
+        let skalaX = 1;
+        let skalaY = 1;
+        
+        // Status Karakter
+        let sedangDiTanah = false;
+        let waktuBerdiamDiTanah = 0;
+        let timerKedip = 0;
+        let sedangKedip = false;
+
+        function updateDanGambar() {
+            // 1. BERSIHKAN KANVAS
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 2. HITUNG LOGIKA FISIKA & GERAKAN
+            if (!sedangDiTanah) {
+                kecepatanY += gravitasi;
+                posisiY += kecepatanY;
+                
+                // Efek visual saat melayang di udara (mulai memanjang ke atas)
+                if (kecepatanY < 0) {
+                    skalaX = 0.95;
+                    skalaY = 1.05;
+                } else {
+                    skalaX = 0.98;
+                    skalaY = 1.02;
+                }
+            }
+
+            // Deteksi tabrakan dengan lantai (Lantai disetel pada koordinat Y = 300)
+            const batasLantai = 300;
+            if (posisiY >= batasLantai) {
+                posisiY = batasLantai;
+                kecepatanY = 0;
+
+                if (!sedangDiTanah) {
+                    // Efek mendarat: Tahu membal gepeng ke samping (Squash!)
+                    sedangDiTanah = true;
+                    skalaX = 1.25;
+                    skalaY = 0.75;
+                    waktuBerdiamDiTanah = 8; // Diam sejenak selama 8 frame sebelum melompat lagi
+                }
+            }
+
+            // Logika ketika tahu sedang bersiap melompat di tanah
+            if (sedangDiTanah) {
+                waktuBerdiamDiTanah--;
+                // Secara bertahap mengembalikan skala bentuk ke normal (1:1) sebelum lompat
+                skalaX += (1 - skalaX) * 0.2;
+                skalaY += (1 - skalaY) * 0.2;
+
+                if (waktuBerdiamDiTanah <= 0) {
+                    // Lompat!
+                    kecepatanY = kekuatanLompat;
+                    sedangDiTanah = false;
+                    skalaX = 0.85; // Efek melesat: Menjadi ramping saat lepas landas
+                    skalaY = 1.15;
+                }
+            } else {
+                // Mengembalikan bentuk ke normal secara halus saat berada di udara
+                skalaX += (1 - skalaX) * 0.1;
+                skalaY += (1 - skalaY) * 0.1;
+            }
+
+            // Logika Mengedipkan Mata secara Acak
+            timerKedip++;
+            if (timerKedip > 120) { // Setiap beberapa detik
+                if (Math.random() > 0.95) {
+                    sedangKedip = true;
+                    if (timerKedip > 132) { // Durasi mata terpejam
+                        sedangKedip = false;
+                        timerKedip = 0;
+                    }
+                }
+            }
+
+            // ==========================================
+            // 3. PROSES MENGGAMBAR KE KANVAS
+            // ==========================================
+
+            const pusatX = canvas.width / 2;
+
+            // A. GAMBAR BAYANGAN (SHADOW) DI LANTAI
+            ctx.save();
+            ctx.beginPath();
+            // Jarak tahu dari lantai menentukan seberapa besar & pudar bayangannya
+            const jarakKeLantai = batasLantai - posisiY;
+            const faktorUkuranBayangan = Math.max(0.2, 1 - (jarakKeLantai / 150));
+            ctx.ellipse(pusatX, batasLantai + 35, 55 * faktorUkuranBayangan * skalaX, 12 * faktorUkuranBayangan, 0, 0, 2 * Math.PI);
+            ctx.fillStyle = "rgba(100, 116, 139, 0.25)"; // Warna abu-abu transparan
+            ctx.fill();
+            ctx.restore();
+
+            // B. TRANSLASI & SKALA UNTUK KARAKTER TAHU
+            ctx.save();
+            // Pindahkan titik pusat koordinat ke bagian bawah tahu agar efek membal berpusat di alas kaki
+            ctx.translate(pusatX, posisiY + 35);
+            ctx.scale(skalaX, skalaY);
+
+            // C. GAMBAR BADAN TAHU (Kotak Membulat Emas)
+            const lebarTofu = 100;
+            const tinggiTofu = 90;
+            const radiusSudut = 24;
+
+            ctx.beginPath();
+            ctx.roundRect(-lebarTofu / 2, -tinggiTofu, lebarTofu, tinggiTofu, radiusSudut);
+            
+            // Gradasi warna emas tahu goreng yang lezat
+            const gradasiBadan = ctx.createLinearGradient(0, -tinggiTofu, 0, 0);
+            gradasiBadan.addColorStop(0, '#fcd34d'); // Kuning cerah atas
+            gradasiBadan.addColorStop(1, '#f59e0b'); // Amber matang bawah
+            
+            ctx.fillStyle = gradasiBadan;
+            ctx.fill();
+
+            // Garis tepi/outline badan tahu agar terlihat seperti kartun pop-up
+            ctx.strokeStyle = '#b45309';
+            ctx.lineWidth = 5;
+            ctx.stroke();
+
+            // D. GAMBAR PIPI MERAH MERONA (BLUSH)
+            ctx.beginPath();
+            ctx.arc(-28, -35, 9, 0, 2 * Math.PI); // Pipi kiri
+            ctx.arc(28, -35, 9, 0, 2 * Math.PI);  // Pipi kanan
+            ctx.fillStyle = "rgba(244, 63, 94, 0.5)"; // Merah muda transparan
+            ctx.fill();
+
+            // E. GAMBAR MATA (Mata Bulat Lucu / Berkedip)
+            ctx.fillStyle = '#451a03'; // Warna cokelat tua gelap
+            if (sedangKedip) {
+                // Jika sedang berkedip, gambar garis melengkung (tersenyum/terpejam)
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = '#451a03';
+                ctx.lineCap = 'round';
+                
+                // Garis mata merem kiri
+                ctx.beginPath(); ctx.arc(-22, -45, 6, Math.PI, 0, false); ctx.stroke();
+                // Garis mata merem kanan
+                ctx.beginPath(); ctx.arc(22, -45, 6, Math.PI, 0, false); ctx.stroke();
+            } else {
+                // Mata normal terbuka bulat dengan efek pantulan cahaya putih di dalamnya
+                ctx.beginPath(); ctx.arc(-22, -45, 6, 0, 2 * Math.PI); ctx.fill(); // Kiri
+                ctx.beginPath(); ctx.arc(22, -45, 6, 0, 2 * Math.PI); ctx.fill();  // Kanan
+                
+                // Pantulan cahaya putih di mata
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath(); ctx.arc(-24, -47, 2, 0, 2 * Math.PI); ctx.fill();
+                ctx.beginPath(); ctx.arc(20, -47, 2, 0, 2 * Math.PI); ctx.fill();
+            }
+
+            // F. GAMBAR MULUT IMUT (Bentuk Huruf "w" atau Kucing)
+            ctx.strokeStyle = '#451a03';
+            ctx.lineWidth = 3.5;
+            ctx.lineCap = 'round';
+            
+            // Lengkungan mulut kiri
+            ctx.beginPath();
+            ctx.arc(-3, -32, 3.5, 0, Math.PI);
+            ctx.stroke();
+            
+            // Lengkungan mulut kanan
+            ctx.beginPath();
+            ctx.arc(3, -32, 3.5, 0, Math.PI);
+            ctx.stroke();
+
+            ctx.restore();
+
+            // 4. LOOPING ANIMASI BERKELANJUTAN
+            requestAnimationFrame(updateDanGambar);
+        }
+
+        // Mulai jalankan animasi saat window selesai dimuat
+        window.onload = function() {
+            updateDanGambar();
+        };
+    </script>
+</body>
+</html>
